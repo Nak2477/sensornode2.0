@@ -1,0 +1,18 @@
+# Smart Sensor Node Configuration
+# All intervals in seconds, valid range: 10-120
+
+# Measurement settings
+measurement_interval=60
+device_id=node001
+
+# Network settings  
+server_host=httpbin.org
+server_port=80
+connection_timeout=5
+
+# File settings
+backup_file=bin/saved_temp.txt
+
+# Sensor settings
+temperature_min=-15.0
+temperature_max=35.0
