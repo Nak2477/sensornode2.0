@@ -29,24 +29,24 @@ Sensor_Data_t* Sensor_Read(void)
     }
     printf("Reading sensors...\n");
     
-    Sensor_Data_t* data = malloc(sizeof(Sensor_Data_t));
-    if (!data) {
+    Sensor_Data_t* SensorData_t = malloc(sizeof(Sensor_Data_t));
+    if (!SensorData_t) {
         printf("Failed to allocate memory for sensor data\n");
         return NULL;
     }
 
-    data->temperature = Random_Temperature_Sensor();
-    data->timestamp = Get_Current_Timestamp();
-    data->sensor_id = DEFAULT_SENSOR_ID;
+    SensorData_t->temperature = Random_Temperature_Sensor();
+    SensorData_t->timestamp = Get_Current_Timestamp();
+    SensorData_t->sensor_id = DEFAULT_SENSOR_ID;
     
-    printf("Sensor ID: %s Temperature: %.2f°C Timestamp: %s\n", data->sensor_id, data->temperature, data->timestamp);
+    printf("Sensor ID: %s Temperature: %.2f°C Timestamp: %s\n", SensorData_t->sensor_id, SensorData_t->temperature, SensorData_t->timestamp);
     
-    return data;
+    return SensorData_t;
 }
 
-int Sensor_JSON(const Sensor_Data_t* data, char* json_buffer, int buffer_size)
+int Sensor_JSON(const Sensor_Data_t* SensorData_t, char* json_buffer, int buffer_size)
 {
-    if (!data || !json_buffer) {
+    if (!SensorData_t || !json_buffer) {
         printf("Invalid parameters for JSON builder\n");
         return -1;
     }
@@ -56,9 +56,9 @@ int Sensor_JSON(const Sensor_Data_t* data, char* json_buffer, int buffer_size)
                                 "\"timestamp\": \"%s\",\n"
                                 "\"temperature\": %.2f\n"
                           "}",
-                          data->sensor_id ? data->sensor_id : "unknown",
-                          data->timestamp ? data->timestamp : "unknown",
-                          data->temperature);
+                          SensorData_t->sensor_id ? SensorData_t->sensor_id : "unknown",
+                          SensorData_t->timestamp ? SensorData_t->timestamp : "unknown",
+                          SensorData_t->temperature);
     
     if (jsondata >= buffer_size) {
         printf("JSON buffer too small (%d needed, %d available)\n", jsondata, buffer_size);
@@ -83,13 +83,157 @@ int Save_Sensor_Data_To_File(char* request)
     
     return 0;
 }
-void Sensor_Free(Sensor_Data_t* data)
+
+int Send_Saved_Sensor_Data(char* buffer)
 {
-    if (data) {
-        if (data->timestamp) {
-            free(data->timestamp);
+    FILE *file = fopen("bin/saved_temp.txt", "r");
+    if (file == NULL) {
+        printf("No saved sensor data to send.\n");
+        return 1;  // No file = no data
+    }
+    
+    // Check if file is empty
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    if (size == 0) {
+        printf("\"bin/saved_temp\" file is empty\n");
+        fclose(file);
+        return 1;  // Empty file
+    }
+    
+    // Reset to beginning for reading
+    fseek(file, 0, SEEK_SET);
+    
+    char line[256];
+    
+    // Find and read first JSON object
+    if (fgets(line, sizeof(line), file) && line[0] == '{') {
+        strcpy(buffer, line);
+        
+        do {
+            if (!fgets(line, sizeof(line), file)) {
+                break;
+            }
+            strcat(buffer, line);
+        } while (line[0] != '}');
+
+        char* brace_pos = strchr(buffer, '}');
+        if (brace_pos) {
+            *(brace_pos + 1) = '\0';  // Null terminate after }
         }
-        free(data);
+        
+        fclose(file);
+        printf("📋 Retrieved JSON object from file\n");
+        return 0;  // Success - object found and copied to buffer
+    }
+    
+    fclose(file);
+    return 1;  // No JSON objects found
+}
+        //NOT USED YET 
+int Read_Complete_Saved_File(char** buffer, size_t* file_size)
+{
+    if (!buffer) {
+        printf("Invalid buffer pointer provided.\n");
+        return -1;
+    }
+    
+    *buffer = NULL;  // Initialize to NULL
+    if (file_size) *file_size = 0;
+    
+    FILE *file = fopen("bin/saved_temp.txt", "r");
+    if (!file) {
+        printf("No saved sensor data file found.\n");
+        return 1;  // File not found
+    }
+    
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    if (size <= 0) {
+        printf("Saved data file is empty or invalid.\n");
+        fclose(file);
+        return 1;  // Empty file
+    }
+    
+    // Allocate buffer for entire file content + null terminator
+    *buffer = malloc(size + 1);
+    if (!*buffer) {
+        printf("Failed to allocate memory for file content (%ld bytes).\n", size);
+        fclose(file);
+        return -1;  // Memory allocation failed
+    }
+    
+    // Read entire file in one operation
+    size_t bytes_read = fread(*buffer, 1, size, file);
+    (*buffer)[bytes_read] = '\0';  // Null terminate
+    
+    fclose(file);
+    
+    if (file_size) *file_size = bytes_read;
+    printf("📋 Read complete file: %zu bytes\n", bytes_read);
+    
+    return 0;  // Success
+}
+
+int Remove_Sent_Object_From_File(const char* sent_object)
+{
+    FILE *file = fopen("bin/saved_temp.txt", "r");
+    FILE *temp = fopen("bin/temp_backup.txt", "w");
+    
+    if (!file || !temp) {
+        if (file) fclose(file);
+        if (temp) fclose(temp);
+        return -1;
+    }
+    
+    char buffer[512];
+    char line[256];
+    int objects_kept = 0;
+    
+    // Copy all objects except the sent one to temp file
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == '{') {
+            strcpy(buffer, line);
+            
+            do {
+                if (!fgets(line, sizeof(line), file)) break;
+                strcat(buffer, line);
+            } while (line[0] != '}');
+            
+            char* brace_pos = strchr(buffer, '}');
+            if (brace_pos) {
+                *(brace_pos + 1) = '\0';
+            }
+            
+            // If this object doesn't match the sent one, keep it
+            if (strcmp(buffer, sent_object) != 0) {
+                fprintf(temp, "%s\n", buffer);
+                objects_kept++;
+            }
+        }
+    }
+    
+    fclose(file);
+    fclose(temp);
+    
+    // Replace original with temp file
+    if (rename("bin/temp_backup.txt", "bin/saved_temp.txt") == 0) {
+        printf("Removed sent object from file (%d objects remaining)\n", objects_kept);
+        return 0;
+    } else {
+        printf("❌ Failed to update saved data file\n");
+        return -1;
+    }
+}
+
+void Sensor_Free(Sensor_Data_t* SensorData_t)
+{
+    if (SensorData_t) {
+        // No need to free timestamp - it's now a static buffer
+        free(SensorData_t);
         printf("🗑️  Sensor data memory freed\n");
     }
 }
@@ -116,18 +260,15 @@ double Random_Temperature_Sensor(void)
 }
 char* Get_Current_Timestamp(void)
 {
-time_t now = time(NULL);
-    char *timestamp = malloc(24);
-    if (!timestamp) {
+    static char timestamp[24]; // Static buffer - no malloc needed
+    time_t now = time(NULL);
+    
+    struct tm *utc_tm = gmtime(&now);
+    if (!utc_tm) {
         return NULL;
     }
     
-    struct tm *utc_tm = gmtime(&now);
-        if (!utc_tm) {
-        free(timestamp);
-        return NULL;
-    }
-    strftime(timestamp, 24 - 1, "%Y-%m-%dT%H:%M:%SZ", utc_tm);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", utc_tm);
     
     return timestamp;
 }

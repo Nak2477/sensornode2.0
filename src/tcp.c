@@ -51,7 +51,7 @@
             printf("Send() failed\n");
             return -1;
         } else {
-        printf("Sent %d bytes\n", bytes_sent);
+        printf("Send() %d bytes:\n%s\n", bytes_sent, data);
         return bytes_sent;
         }
    }

@@ -61,6 +61,14 @@ help: $(TARGET)
 run-random: $(TARGET)
 	./$(TARGET) --random
 
+# Kör med valgrind för minnesanalys
+valgrind: $(TARGET)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(TARGET) --interval 10
+
+# Kortare valgrind-körning (10 sekunder)
+valgrind-short: $(TARGET)
+	timeout 10 valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) --interval 5
+
 # Visa information om Make-målen
 info:
 	@echo "Tillgängliga mål:"
@@ -69,6 +77,8 @@ info:
 	@echo "  run       - Kompilera och kör med standardparametrar"
 	@echo "  run-log   - Kör med log handler och temperatur 25.3"
 	@echo "  run-random - Kör med slumpmässig temperatur"
+	@echo "  valgrind  - Kör med valgrind minnesanalys"
+	@echo "  valgrind-short - Kort valgrind-test (10 sek)"
 	@echo "  help      - Visa programmets hjälp"
 	@echo "  info      - Visa denna information"
 	@echo ""
@@ -99,7 +109,7 @@ uninstall:
 	@echo "Avinstallation klar!"
 
 # Phony targets (dessa är inte filer)
-.PHONY: all clean run run-log run-random help info debug release install uninstall directories
+.PHONY: all clean run run-log run-random valgrind valgrind-short help info debug release install uninstall directories
 
 # Visa vilka filer som kommer kompileras
 show-files:

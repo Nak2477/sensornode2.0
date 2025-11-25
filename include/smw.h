@@ -22,28 +22,36 @@
 
 
 typedef enum {
-    TASK_INITIALIZE,
-    TASK_READ_SENSOR,
-    TASK_CONNECT,
-    TASK_POST_REQUEST,
-    TASK_SAVE_DATA,
-    TASK_RECEIVE_RESPONSE,
-    TASK_RETRY,
-    TASK_CLEANUP,
-    TASK_DONE,
-    TASK_FAILED,
+    STATE_INITIALIZE,
+    STATE_READ_SENSOR,
+    STATE_HTTP_TRANSACTION,    // Combined: connect + POST + receive
+    STATE_SAVE_DATA,
+    STATE_RETRY,
+    STATE_PROCESS_SAVED_DATA,  // Combined: complete saved data lifecycle
+    STATE_DONE,                // Combined: cleanup + completion
+    STATE_FAILED,
 } task_state_t;
+
+typedef void (*task_success_callback_t)(void* user_data);
+typedef void (*task_failure_callback_t)(int error_code, void* user_data);
 
 typedef struct {
     task_state_t state;
     int sockfd;
     Sensor_Data_t* sensor_data;
     char json_buffer[BUFFER_JSON_SIZE];
+    char fromfile_buffer[BUFFER_JSON_SIZE];   
     char* http_request;
     char http_response[MAX_RESPONSE_SIZE];
     int attempt_count;
     int result_code;
+
+    // Callback fields
+    task_success_callback_t on_success;
+    task_failure_callback_t on_failure;
+    void* user_data;
 } task_context_t;
+
 
 typedef struct {
     void* context;
