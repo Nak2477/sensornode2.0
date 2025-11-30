@@ -1,6 +1,6 @@
 #include "../include/smw.h"
 
-smw_task_t* Create_Smw_Task(void* ctx, void (*cb)(void*, uint64_t))
+smw_task_t* Create_Smw_Task(void* ctx, void (*cb) (void*, uint64_t))
 {
     smw_task_t* task = malloc(sizeof(smw_task_t));
     if (!task) return NULL;
@@ -8,8 +8,7 @@ smw_task_t* Create_Smw_Task(void* ctx, void (*cb)(void*, uint64_t))
     task->context = ctx;
     task->callback = cb;
     task->active = 1;
-
-    printf("Created Task with function pointer\n");
+    
     return task;
 }
 
@@ -30,11 +29,9 @@ void Free_Smw_Task(smw_task_t* task)
     }
 }
 
-void Sensor_State_Machine(void* context, uint64_t monTime)
+void Sensor_State_Machine(task_context_t* ctx, uint64_t monTime)
 {
     (void)monTime; // Mark as unused to suppress warning
-
-    task_context_t* ctx = (task_context_t*)context;
 
     switch(ctx->state)
     {
@@ -148,7 +145,6 @@ void Sensor_State_Machine(void* context, uint64_t monTime)
         break;
 
         case STATE_DONE:
-            // Cleanup resources and complete
             if (ctx->sockfd >= 0) {
                 close(ctx->sockfd);
                 ctx->sockfd = -1;
@@ -162,7 +158,6 @@ void Sensor_State_Machine(void* context, uint64_t monTime)
                 ctx->sensor_data = NULL;
             }
             
-            // Trigger success callback
             if (ctx->on_success) {
                 ctx->on_success(ctx->user_data);
             } else {
@@ -173,7 +168,7 @@ void Sensor_State_Machine(void* context, uint64_t monTime)
         case STATE_FAILED:
             if (ctx->on_failure)
             {
-                ctx->on_failure(ctx->result_code, ctx->user_data);  // ← Call failure callback
+                ctx->on_failure(ctx->result_code, ctx->user_data);
             } else {
                 printf("Sensor task failed with code: %d\n", ctx->result_code);
             }

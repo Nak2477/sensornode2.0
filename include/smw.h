@@ -64,6 +64,6 @@ void Execute_Smw_Task(smw_task_t* task, uint64_t timestamp);
 void Free_Smw_Task(smw_task_t* task);
 
 
-void Sensor_State_Machine(void* context, uint64_t monTime);
+void Sensor_State_Machine(task_context_t* context, uint64_t monTime);
 
 #endif

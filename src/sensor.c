@@ -144,7 +144,7 @@ int Read_Complete_Saved_File(char** buffer, size_t* file_size)
     FILE *file = fopen("bin/saved_temp.txt", "r");
     if (!file) {
         printf("No saved sensor data file found.\n");
-        return 1;  // File not found
+        return 1;
     }
     
     // Get file size
@@ -155,7 +155,7 @@ int Read_Complete_Saved_File(char** buffer, size_t* file_size)
     if (size <= 0) {
         printf("Saved data file is empty or invalid.\n");
         fclose(file);
-        return 1;  // Empty file
+        return 1; 
     }
     
     // Allocate buffer for entire file content + null terminator
@@ -163,7 +163,7 @@ int Read_Complete_Saved_File(char** buffer, size_t* file_size)
     if (!*buffer) {
         printf("Failed to allocate memory for file content (%ld bytes).\n", size);
         fclose(file);
-        return -1;  // Memory allocation failed
+        return -1; 
     }
     
     // Read entire file in one operation
@@ -258,6 +258,7 @@ double Random_Temperature_Sensor(void)
 
     return base_temperature + noise;
 }
+
 char* Get_Current_Timestamp(void)
 {
     static char timestamp[24]; // Static buffer - no malloc needed

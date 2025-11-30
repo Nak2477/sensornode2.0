@@ -2,8 +2,8 @@
 #define TCP_H
 
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <netdb.h>
+
 
 
 int Tcp_Init(const char* hostname, int port);

@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
         ctx.on_failure = on_sensor_failure;
         ctx.user_data = &stats;
         
-        smw_task_t* sensor_task = Create_Smw_Task(&ctx, Sensor_State_Machine);
+        smw_task_t* sensor_task = Create_Smw_Task(&ctx, (void (*)(void*, uint64_t))Sensor_State_Machine);
                 
 
         do {
