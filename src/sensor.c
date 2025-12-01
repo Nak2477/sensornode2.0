@@ -96,7 +96,7 @@ int Send_Saved_Sensor_Data(char* buffer)
     fseek(file, 0, SEEK_END);
     long size = ftell(file);
     if (size == 0) {
-        printf("\"bin/saved_temp\" file is empty\n");
+       // printf("\"bin/saved_temp\" file is empty\n");
         fclose(file);
         return 1;  // Empty file
     }

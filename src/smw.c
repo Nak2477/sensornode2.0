@@ -107,8 +107,7 @@ void Sensor_State_Machine(task_context_t* ctx, uint64_t monTime)
                     if (strlen(ctx->fromfile_buffer) > 0) {
                         ctx->state = STATE_PROCESS_SAVED_DATA;
                     } else {
-                        // Fresh data was sent successfully - check for saved data
-                        ctx->state = STATE_PROCESS_SAVED_DATA;
+                        ctx->state = STATE_DONE;
                     }
                 } else {
                     ctx->state = STATE_SAVE_DATA; // Save data if server rejected it

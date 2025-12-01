@@ -3,7 +3,10 @@
 # Compiler och flaggor
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -g
-LDFLAGS = 
+LDFLAGS =
+
+# Sätt standard målet
+.DEFAULT_GOAL := all 
 
 # Kataloger
 SRCDIR = src
@@ -25,9 +28,10 @@ HEADERS = $(wildcard $(INCDIR)/*.h)
 all: directories $(TARGET)
 
 # Skapa nödvändiga kataloger
-directories:
-	@mkdir -p $(OBJDIR)
-	@mkdir -p $(BINDIR)
+$(OBJDIR) $(BINDIR):
+	@mkdir -p $@
+
+directories: $(OBJDIR) $(BINDIR)
 
 # Länka objektfiler till exekverbar fil
 $(TARGET): $(OBJECTS)
@@ -36,7 +40,7 @@ $(TARGET): $(OBJECTS)
 	@echo "Kompilering klar! Kör med: ./$(TARGET)"
 
 # Kompilera C-filer till objektfiler
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HEADERS)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HEADERS) | $(OBJDIR)
 	@echo "Kompilerar $<..."
 	$(CC) $(CFLAGS) -I$(INCDIR) -c $< -o $@
 
@@ -89,12 +93,12 @@ info:
 	@echo "  $(OBJECTS)"
 
 # Debug-version med extra debug-information
-debug: CFLAGS += -DDEBUG -O0
-debug: $(TARGET)
+debug: clean
+	$(MAKE) CFLAGS="$(CFLAGS) -DDEBUG -O0" $(TARGET)
 
 # Release-version med optimering
-release: CFLAGS += -O2 -DNDEBUG
-release: clean $(TARGET)
+release: clean
+	$(MAKE) CFLAGS="$(CFLAGS) -O2 -DNDEBUG" $(TARGET)
 
 # Installera programmet (kräver sudo för /usr/local/bin)
 install: $(TARGET)
