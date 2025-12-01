@@ -1,6 +1,8 @@
 #ifndef SMW_H
 #define SMW_H
 
+#define _POSIX_C_SOURCE 200112L
+
 #include "../include/tcp.h"
 #include "../include/http.h"
 #include "../include/sensor.h"
@@ -32,8 +34,6 @@ typedef enum {
     STATE_FAILED,
 } task_state_t;
 
-typedef void (*task_success_callback_t)(void* user_data);
-typedef void (*task_failure_callback_t)(int error_code, void* user_data);
 
 typedef struct {
     task_state_t state;
@@ -46,10 +46,10 @@ typedef struct {
     int attempt_count;
     int result_code;
 
-    // Callback fields
-    task_success_callback_t on_success;
-    task_failure_callback_t on_failure;
-    void* user_data;
+    // Timing fields
+    uint64_t last_read_time;      // When the last measurement was taken (ms)
+    int measurement_interval;     // How often to take measurements (seconds)
+
 } task_context_t;
 
 

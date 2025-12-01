@@ -8,7 +8,7 @@ smw_task_t* Create_Smw_Task(void* ctx, void (*cb) (void*, uint64_t))
     task->context = ctx;
     task->callback = cb;
     task->active = 1;
-    
+
     return task;
 }
 
@@ -24,7 +24,7 @@ void Free_Smw_Task(smw_task_t* task)
 {
     if (task)
     {
-        printf("Freeing Task resources\n");
+        //printf("Freeing Task resources\n");
         free(task);
     }
 }
@@ -32,6 +32,8 @@ void Free_Smw_Task(smw_task_t* task)
 void Sensor_State_Machine(task_context_t* ctx, uint64_t monTime)
 {
     (void)monTime; // Mark as unused to suppress warning
+    
+
 
     switch(ctx->state)
     {
@@ -44,18 +46,31 @@ void Sensor_State_Machine(task_context_t* ctx, uint64_t monTime)
         break;
         
         case STATE_READ_SENSOR:
-            ctx->sensor_data = Sensor_Read();
-            if (ctx->sensor_data) {
-                int json_len = Sensor_JSON(ctx->sensor_data, ctx->json_buffer, sizeof(ctx->json_buffer));
-                if (json_len > 0) {
-                    ctx->state = STATE_HTTP_TRANSACTION;
+        
+            struct timespec current_time;
+            clock_gettime(CLOCK_MONOTONIC, &current_time);
+            uint64_t current_ms = (current_time.tv_sec * 1000) + (current_time.tv_nsec / 1000000);
+            uint64_t elapsed = current_ms - ctx->last_read_time;
+            
+            if (elapsed >= (uint64_t)ctx->measurement_interval * 1000)
+            {
+                ctx->last_read_time = current_ms;
+                ctx->sensor_data = Sensor_Read();
+                if (ctx->sensor_data) {
+                    int json_len = Sensor_JSON(ctx->sensor_data, ctx->json_buffer, sizeof(ctx->json_buffer));
+                    if (json_len > 0) {
+                        ctx->state = STATE_HTTP_TRANSACTION;
+                    } else {
+                        ctx->state = STATE_FAILED;
+                        ctx->result_code = -2;
+                    }
                 } else {
                     ctx->state = STATE_FAILED;
                     ctx->result_code = -2;
                 }
             } else {
-                ctx->state = STATE_FAILED;
-                ctx->result_code = -2;
+                   ctx->state = STATE_PROCESS_SAVED_DATA;
+ // Not time yet - stay in this state
             }
         break;
 
@@ -122,24 +137,24 @@ void Sensor_State_Machine(task_context_t* ctx, uint64_t monTime)
         break;
 
         case STATE_PROCESS_SAVED_DATA:
-            // If buffer has data, it was just sent successfully - remove it
+
             if (strlen(ctx->fromfile_buffer) > 0) {
-                if (Remove_Sent_Object_From_File(ctx->fromfile_buffer) == 0) {
-                    printf("✅ Removed sent data from file\n");
+                if (Remove_Sent_Object_From_File(ctx->fromfile_buffer) == 0)
+                {
+                    printf("Removed sent data from file\n");
                 } else {
-                    printf("⚠️  Failed to remove sent data\n");
+                    printf("Failed to remove sent data\n");
                 }
                 memset(ctx->fromfile_buffer, 0, sizeof(ctx->fromfile_buffer));
             }
             
-            // Try to get next saved data to send
-            if (Send_Saved_Sensor_Data(ctx->fromfile_buffer) == 0) {
-                // Found more saved data - send it
+            if (Send_Saved_Sensor_Data(ctx->fromfile_buffer) == 0)
+            {
                 strcpy(ctx->json_buffer, ctx->fromfile_buffer);
                 ctx->state = STATE_HTTP_TRANSACTION;
             } else {
-                // No more saved data to process
-                printf("📭d No saved data to send\n");
+
+                //printf("No saved data to send\n");
                 ctx->state = STATE_DONE;
             }
         break;
@@ -156,22 +171,13 @@ void Sensor_State_Machine(task_context_t* ctx, uint64_t monTime)
             if (ctx->sensor_data) {
                 Sensor_Free(ctx->sensor_data);
                 ctx->sensor_data = NULL;
-            }
-            
-            if (ctx->on_success) {
-                ctx->on_success(ctx->user_data);
             } else {
-                printf("Sensor task completed successfully\n");
+               // printf("Sensor task completed successfully\n");
             }
         break;
         
         case STATE_FAILED:
-            if (ctx->on_failure)
-            {
-                ctx->on_failure(ctx->result_code, ctx->user_data);
-            } else {
-                printf("Sensor task failed with code: %d\n", ctx->result_code);
-            }
+                printf("Sensor task failed with code: %d\n", ctx->result_code);           
         break;
     }
 }

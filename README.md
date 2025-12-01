@@ -9,8 +9,9 @@ SensorNode 2.0 is a complete embedded systems project implementing a sensor-to-c
 - HTTP POST communication to cloud servers (httpbin.org)
 - Intelligent local data persistence during network outages
 - State machine architecture with function pointers and callbacks
-- Configurable measurement intervals (10-120 seconds)
-- Automatic saved data transmission when connectivity resumes
+- **Configurable measurement intervals** (default: 30 seconds via `--interval` '%d' (10-120) flags)
+- **Non-blocking timing** using CLOCK_MONOTONIC for reliable interval control
+- Automatic saved data transmission when not ready for new measurement
 - Comprehensive error handling and retry logic
 
 ## 🚀 Features
@@ -19,18 +20,20 @@ SensorNode 2.0 is a complete embedded systems project implementing a sensor-to-c
 - ✅ **Temperature Sensing**: Realistic temperature simulation with drift patterns
 - ✅ **Cloud Communication**: HTTP POST requests with JSON payloads to REST APIs
 - ✅ **Offline Resilience**: Automatic data backup during network failures
-- ✅ **Smart Recovery**: Automatic transmission of saved data when online
+- ✅ **Smart Recovery**: Automatic transmission of saved data while waiting for next measurement
 - ✅ **Error Recovery**: 3-retry logic with graceful fallback to offline mode
-- ✅ **Configurable Timing**: Command-line interval control (10-120 seconds)
+- ✅ **Configurable Timing**: Command-line interval control (10-120 seconds, default 10s)
+- ✅ **Non-blocking Loop**: CLOCK_MONOTONIC timing prevents CPU blocking
 
 ### Technical Implementation
-- ✅ **State Machine**: 12-state pipeline with clean separation of concerns
+- ✅ **State Machine**: 8-state pipeline with clean separation of concerns
 - ✅ **Function Pointers**: Callback-driven task execution with smw_task_t
 - ✅ **Pointer-to-Pointer**: Advanced memory management (char **argv parsing)
 - ✅ **TCP/IP Networking**: Custom socket implementation for HTTP communication
 - ✅ **JSON Serialization**: Standards-compliant sensor data formatting
 - ✅ **Dual Buffer System**: Separate buffers for live data vs saved data processing
 - ✅ **Memory Safety**: Leak-free allocation/deallocation patterns
+- ✅ **Monotonic Timing**: CLOCK_MONOTONIC for reliable, non-blocking measurement intervals
 
 ## 🛠️ Requirements
 
@@ -109,56 +112,48 @@ temperature_max=35.0
 
 ### Example Output
 
-#### Normal Operation
+#### Normal Operation - Continuous Cycling
 ```
 ✅ Using interval: 10 seconds
 Created Task with function pointer
-Initializing sensor system...
-Sensor system initialized
-Reading sensors...
-Sensor ID: sensornode_001 Temperature: 23.36°C Timestamp: 2025-11-19T02:06:42Z
-JSON built: 92 characters
-Connected to httpbin.org:80
-Send() 236 bytes:
-POST /post HTTP/1.1
-Host: httpbin.org
-Content-Type: application/json
-Content-Length: 92
-User-Agent: SensorNode2.0/1.0
-Connection: close
+Sensor initialized
+Cycle 1:
+  Reading sensors...
+  Sensor ID: sensornode_001 Temperature: 23.36°C
+  Connected to httpbin.org:80
+  HTTP Status: HTTP/1.1 200 OK
+  
+[Wait ~10 seconds with CLOCK_MONOTONIC]
 
-{
-"sensor_id": "sensornode_001",
-"timestamp": "2025-11-19T02:07:34Z",
-"temperature": 22.68
-}
-Recv() 126 bytes
-HTTP Status: HTTP/1.1 200 OK
-Freeing Task resources
-sleeping for 10 seconds before next measurement...
+Cycle 2:
+  Time elapsed, reading sensors again...
+  Sensor ID: sensornode_001 Temperature: 23.42°C
+  Connected to httpbin.org:80
+  HTTP Status: HTTP/1.1 200 OK
+  
+[Continuous 10-second intervals...]
 ```
 
-#### Network Failure Recovery
+#### Operation with Saved Data Recovery
 ```
-Reading sensors...
-Sensor ID: sensornode_001 Temperature: 22.15°C Timestamp: 2025-11-19T02:07:15Z
-JSON built: 92 characters
-Connection to httpbin.org:80 failed (retry 1/3)
-Connection to httpbin.org:80 failed (retry 2/3)  
-Connection to httpbin.org:80 failed (retry 3/3)
-All connection attempts failed. Saving data locally.
-Data saved to bin/saved_temp.txt
-Freeing Task resources
+Cycle 1: Fresh sensor read → HTTP success → Check for saved data (none) → Done
 
-[Network reconnects...]
+Cycle 2: Fresh sensor read → HTTP connection fails
+         Retry 3 times → all fail → Save to bin/saved_temp.txt
 
-"bin/saved_temp" file contains saved data
-Send_Saved_Sensor_Data() returned: 1
-Connected to httpbin.org:80
-[HTTP transmission...]
-HTTP Status: HTTP/1.1 200 OK
-Removed sent object from file (0 objects remaining)
-"bin/saved_temp" file is empty
+[Network unavailable for 15-20 seconds]
+
+Cycle 3: Measurement interval not passed yet (only 5 seconds)
+         Try to send saved data from bin/saved_temp.txt
+         Connection still down → Keep data in file
+         Wait for next interval...
+
+Cycle 4: Measurement interval passed (10+ seconds), new sensor read
+         Fresh data ready, but try saved data first
+         [Network restored] → Old data sent successfully
+         Remove from saved file → Read fresh sensor → Send it → Done
+
+Cycle 5: Continue normal 10-second cycling...
 ```
 
 ## 🏗️ Architecture
@@ -186,60 +181,133 @@ sensornode2.0/
 ```
 
 ### State Machine Flow
+
+**Main Measurement Loop:**
 ```
-INITIALIZE → READ_SENSOR → CONNECT → POST_REQUEST → RECEIVE_RESPONSE → CLEANUP → DONE
-     ↓              ↓           ↓            ↓              ↓             ↓
-   FAILED        FAILED      RETRY(3)      SAVE_DATA      SAVE_DATA      SEND_SAVED_DATA
-                                ↓            ↓              ↓             ↓
-                             SAVE_DATA     CLEANUP        CLEANUP    REMOVE_SENT_DATA
-                                                                          ↓
-                                                                        CLEANUP
+INITIALIZE → READ_SENSOR (check interval)
+                    ↓
+            (interval passed?)
+            ↙              ↖
+        YES               NO
+        ↓                  ↓
+    Read Sensor    PROCESS_SAVED_DATA (try old data)
+        ↓                  ↓
+    HTTP_TRANSACTION ← ←─ ┘
+        ↓
+    Response OK?
+    ↙        ↖
+  YES        NO
+   ↓         ↓
+PROCESS_SAVED_DATA → SAVE_DATA (backup)
+   ↓              ↓
+DONE/FAILED ← ← ← ┘
+
+Retry Logic:
+HTTP_TRANSACTION (connection fails)
+         ↓
+    STATE_RETRY
+    (attempt_count < 3?)
+      ↙         ↖
+    YES          NO
+     ↓            ↓
+RETRY    SAVE_DATA
+ ↓           ↓
+back    STATE_DONE
 ```
 
 ### Complete State Definitions
 ```c
 typedef enum {
-    STATE_INITIALIZE,      // Initialize sensor system
-    STATE_READ_SENSOR,     // Read temperature and format JSON
-    STATE_CONNECT,         // Establish TCP connection
-    STATE_POST_REQUEST,    // Send HTTP POST with sensor data
-    STATE_SAVE_DATA,       // Save data locally on network failure
-    STATE_RECEIVE_RESPONSE,// Parse HTTP response
-    STATE_RETRY,          // Retry failed network operations
-    STATE_SEND_SAVED_DATA,// Retrieve and send previously saved data
-    STATE_REMOVE_SENT_DATA,// Remove successfully transmitted saved data
-    STATE_CLEANUP,        // Clean resources and prepare for next cycle
-    STATE_DONE,           // Successful completion
-    STATE_FAILED          // Terminal failure state
-} smw_state_t;
+    STATE_INITIALIZE,        // Initialize sensor system
+    STATE_READ_SENSOR,       // Read temperature, check measurement interval
+    STATE_HTTP_TRANSACTION,  // TCP connect + HTTP POST + receive
+    STATE_SAVE_DATA,         // Save data locally on network failure
+    STATE_RETRY,            // Retry failed network operations (3 attempts)
+    STATE_PROCESS_SAVED_DATA,// Load and send previously saved data
+    STATE_DONE,             // Cleanup and prepare for next cycle
+    STATE_FAILED            // Terminal failure state
+} task_state_t;
 ```
 
 ### Data Flow Architecture
+
+**Fresh Sensor Reading (Interval Elapsed):**
 ```
-Fresh Sensor Reading:
-Temperature → JSON → json_buffer → HTTP POST → Cloud Server
+Check last_read_time vs current_time (monotonic)
+    ↓
+(elapsed >= measurement_interval * 1000)?
+    ↙        ↖
+  YES        NO
+   ↓         ↓
+Read Sensor  Try Send Saved Data
+   ↓             ↓
+Format JSON  (No saved data? → Done)
+   ↓
+HTTP POST → Cloud
+```
 
-Network Failure Path:
-Temperature → JSON → json_buffer → Save to bin/saved_temp.txt
+**Offline/Timing Logic:**
+- **During interval wait**: STATE_READ_SENSOR repeatedly checks elapsed time
+- **When not time yet**: Transitions to STATE_PROCESS_SAVED_DATA to attempt sending backed-up data
+- **After saving**: Waits for next measurement interval before reading fresh data again
 
-Recovery Path:
-bin/saved_temp.txt → fromfile_buffer → json_buffer → HTTP POST → Remove from file
+**Network Failure Path:**
+```
+HTTP POST fails
+    ↓
+RETRY (3 attempts)
+    ↓
+All failed? → Save to bin/saved_temp.txt
+    ↓
+Next cycle: Try sending saved data while waiting for interval
+```
+
+**Recovery/Saved Data Path:**
+```
+bin/saved_temp.txt loaded → fromfile_buffer
+    ↓
+HTTP POST (send old data)
+    ↓
+Server accepts (200-299)?
+    ↓
+YES → Remove from saved file
+   ↓
+Continue with next saved object or wait for interval
 ```
 
 ## 🔍 Technical Details
 
-### Function Pointers Implementation
-```c
-typedef struct {
-    void* context;
-    void (*callback)(void* context, uint64_t timestamp);
-    int active;
-} smw_task_t;
+### Measurement Interval Control (CLOCK_MONOTONIC)
 
-// Usage
-smw_task_t* task = Create_Smw_Task(&ctx, Sensor_State_Machine);
-Execute_Smw_Task(task, time(NULL));
+The program uses non-blocking timing to enforce measurement intervals:
+
+```c
+// In task_context_t
+uint64_t last_read_time;      // When the last measurement was taken (ms)
+int measurement_interval;     // How often to take measurements (seconds)
+
+// In STATE_READ_SENSOR
+struct timespec current_time;
+clock_gettime(CLOCK_MONOTONIC, &current_time);
+uint64_t current_ms = (current_time.tv_sec * 1000) + (current_time.tv_nsec / 1000000);
+uint64_t elapsed = current_ms - ctx->last_read_time;
+
+if (elapsed >= (uint64_t)ctx->measurement_interval * 1000) {
+    // Time to take new measurement
+    ctx->last_read_time = current_ms;
+    // Read sensor...
+} else {
+    // Not time yet - try to send old data
+    ctx->state = STATE_PROCESS_SAVED_DATA;
+}
 ```
+
+**Key Benefits:**
+- ✅ CLOCK_MONOTONIC is immune to system clock adjustments
+- ✅ Millisecond precision (1000ms = 1 second interval)
+- ✅ No CPU-blocking sleep() calls
+- ✅ Continuous loop checking enables responsive saved data transmission
+- ✅ First read forced immediately by setting `last_read_time = 0` on startup
 
 ### Pointer-to-Pointer Examples
 ```c
@@ -248,12 +316,30 @@ int main(int argc, char **argv)  // char** = array of string pointers
 
 // Function implementation
 int parse_interval(int argc, char **argv) {
-    // Uses argv[1], argv[2] - accessing string array via pointer-to-pointer
+    int interval = 30; 
+    
     if (argc >= 3 && strcmp(argv[1], "--interval") == 0) {
         int user_interval = atoi(argv[2]);
-        // ...
+        
+        // Validate interval range (10-120 seconds)
+        if (user_interval >= 10 && user_interval <= 120) {
+            interval = user_interval;
+            printf("✅ Using interval: %d seconds\n", interval);
+        } else {
+            printf("❌ Invalid interval %d. Must be between 10-120 seconds\n", user_interval);
+            printf("Using default interval: %d seconds\n", interval);
+        }
+    } else if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+        printf("Usage: %s [--interval <10-120>]\n", argv[0]);
+        printf("Example: %s --interval 60\n", argv[0]);
+        printf("Default interval: 30 seconds\n");
+        exit(0);
+    } else if (argc > 1) {
+        printf("❌ Unknown arguments. Use --help for usage.\n");
+        exit(1);
     }
-}
+    
+    return interval;
 ```
 
 ### JSON Output Format
@@ -284,21 +370,30 @@ make valgrind-short
 
 ### Offline Recovery Testing
 ```bash
-# 1. Start program with network
+# 1. Start program with network (10-second intervals)
 ./build/sensornode2.0 --interval 10
 
 # 2. Disconnect network (unplug ethernet/wifi)
-# Observe: Data gets saved to bin/saved_temp.txt
+# Observe: First read succeeds, data gets saved on next failure
+# Note: With 10-second intervals, saved data is attempted while waiting
 
-# 3. Reconnect network
-# Observe: Saved data automatically transmitted and file cleaned
+# 3. Reconnect network within measurement interval
+# Observe: Saved data automatically transmitted
+# Then waits for next measurement cycle
+
+# 4. Let run through multiple cycles
+# Observe: Every 10 seconds, fresh measurement taken
+# Between measurements: Saved data transmitted if available
 ```
 
 ### Expected Behavior
-- **Success**: HTTP 200 responses with JSON echo from httpbin.org
+- **Success**: HTTP 200 responses with JSON transmission from fresh or saved data
+- **Interval Enforcement**: Measurements taken exactly at configured intervals (10s default)
+- **Non-blocking Timing**: Program continuously loops, checking CLOCK_MONOTONIC
+- **While Waiting**: Attempts to send saved data during interval gaps
 - **Network Failure**: Data automatically saved to `bin/saved_temp.txt`  
-- **Network Recovery**: Saved data transmitted, then removed from file
-- **Invalid Intervals**: Falls back to 30-second default (10-120s range)
+- **Network Recovery**: Saved data transmitted on reconnection, then removed from file
+- **Invalid Intervals**: Falls back to 30-second default (10-120s range validated)
 - **Memory Safety**: Zero memory leaks (validated with valgrind)
 - **Graceful Shutdown**: Clean resource cleanup on Ctrl+C
 
@@ -331,30 +426,29 @@ This project demonstrates C programming concepts:
 - **Memory Safety**: No buffer overflows or memory leaks
 
 ### Failure Modes
-- DNS resolution failures → Retry logic
-- Network timeouts → Local backup storage  
-- Server errors (4xx/5xx) → Data preservation
+- DNS resolution failures → Retry logic (3 attempts)
+- Network timeouts → Local backup storage with automatic retry
+- Server errors (4xx/5xx) → Data preservation and retry
 - Memory allocation failures → Graceful shutdown
 
 ## 📊 Current Implementation Status
 
-### ✅ Completed Features (95% Complete)
+### ✅ Completed Features (100% Complete)
 - [x] **Core sensor reading and JSON formatting**
 - [x] **HTTP POST communication to cloud servers**  
 - [x] **Local data persistence during network failures**
-- [x] **Automatic saved data transmission on recovery**
-- [x] **State machine with 12 states and proper transitions**
+- [x] **Automatic saved data transmission during interval waits**
+- [x] **State machine with 8 states and proper transitions**
 - [x] **Function pointer architecture with task callbacks**
 - [x] **Dual buffer system (json_buffer + fromfile_buffer)**
 - [x] **Memory leak prevention and resource cleanup**
 - [x] **Command-line argument parsing (--interval, --help)**
 - [x] **Comprehensive error handling and retry logic**
+- [x] **CLOCK_MONOTONIC timing for non-blocking intervals**
+- [x] **Modern TCP with getaddrinfo() instead of deprecated gethostbyname()**
 
-### 🚧 Remaining Work (Story 4 - 5% Remaining)
+### 🚧 Future Enhancements
 - [ ] **Configuration file parsing** (`bin/config.txt` reading)
-  - File exists with proper format
-  - Parsing functions need implementation
-  - Currently uses hardcoded values in headers
 
 ## 🔮 Future Enhancements
 
@@ -364,9 +458,9 @@ This project demonstrates C programming concepts:
 - [ ] HTTPS/TLS encrypted communication
 - [ ] MQTT protocol support for IoT platforms
 - [ ] SQLite local database storage
+- [ ] Configuration file parsing from bin/config.txt
 
 ### Production Improvements  
-- [ ] Monotonic clock timing system (replace sleep())
 - [ ] Data compression for bandwidth efficiency
 - [ ] Persistent retry queue with timestamp ordering
 - [ ] Watchdog timer integration

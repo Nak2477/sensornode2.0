@@ -9,7 +9,7 @@ static int sensor_initialized = 0;
 int Sensor_Init(void)
 {
     if (sensor_initialized) {
-        printf("Sensor already initialized\n");
+       // printf("Sensor already initialized\n");
         return 0;
     }
     printf("Initializing sensor system...\n");
@@ -275,9 +275,8 @@ char* Get_Current_Timestamp(void)
 }
 
 int parse_interval(int argc, char **argv) {
-    int interval = 30; // Default interval in seconds
+    int interval = 30; 
     
-    // Parse command line arguments
     if (argc >= 3 && strcmp(argv[1], "--interval") == 0) {
         int user_interval = atoi(argv[2]);
         
