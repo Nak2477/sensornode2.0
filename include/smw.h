@@ -26,11 +26,11 @@
 typedef enum {
     STATE_INITIALIZE,
     STATE_READ_SENSOR,
-    STATE_HTTP_TRANSACTION,    // Combined: connect + POST + receive
+    STATE_PROCESS_SAVED_DATA,
+    STATE_HTTP_TRANSACTION,
+    STATE_OFFLINE,
     STATE_SAVE_DATA,
-    STATE_RETRY,
-    STATE_PROCESS_SAVED_DATA,  // Combined: complete saved data lifecycle
-    STATE_DONE,                // Combined: cleanup + completion
+    STATE_DONE,
     STATE_FAILED,
 } task_state_t;
 
@@ -46,9 +46,13 @@ typedef struct {
     int attempt_count;
     int result_code;
 
-    // Timing fields
+
+    uint64_t offline_time;
+    int reconnect_interval;
+
     uint64_t last_read_time;      // When the last measurement was taken (ms)
     int measurement_interval;     // How often to take measurements (seconds)
+    uint64_t last_save_time;      // When last data was saved to file (ms) - for throttling saves
 
 } task_context_t;
 

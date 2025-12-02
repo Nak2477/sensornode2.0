@@ -84,15 +84,16 @@ int Save_Sensor_Data_To_File(char* request)
     return 0;
 }
 
+
+        // 0 = success, 1 = no data to send
 int Send_Saved_Sensor_Data(char* buffer)
 {
     FILE *file = fopen("bin/saved_temp.txt", "r");
     if (file == NULL) {
         printf("No saved sensor data to send.\n");
-        return 1;  // No file = no data
+        return 1; 
     }
     
-    // Check if file is empty
     fseek(file, 0, SEEK_END);
     long size = ftell(file);
     if (size == 0) {
@@ -101,12 +102,10 @@ int Send_Saved_Sensor_Data(char* buffer)
         return 1;  // Empty file
     }
     
-    // Reset to beginning for reading
     fseek(file, 0, SEEK_SET);
     
     char line[256];
     
-    // Find and read first JSON object
     if (fgets(line, sizeof(line), file) && line[0] == '{') {
         strcpy(buffer, line);
         
@@ -119,19 +118,21 @@ int Send_Saved_Sensor_Data(char* buffer)
 
         char* brace_pos = strchr(buffer, '}');
         if (brace_pos) {
-            *(brace_pos + 1) = '\0';  // Null terminate after }
+            *(brace_pos + 1) = '\0';
         }
         
         fclose(file);
         printf("📋 Retrieved JSON object from file\n");
-        return 0;  // Success - object found and copied to buffer
+        return 0; 
     }
     
     fclose(file);
-    return 1;  // No JSON objects found
+    return 1; 
 }
-        //NOT USED YET 
-int Read_Complete_Saved_File(char** buffer, size_t* file_size)
+
+
+        
+int Read_Complete_Saved_File(char** buffer, size_t* file_size)                  //NOT USED YET 
 {
     if (!buffer) {
         printf("Invalid buffer pointer provided.\n");

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <sys/time.h>
 
 int Tcp_Init(const char* hostname, int port)
 {
@@ -32,6 +32,16 @@ int Tcp_Init(const char* hostname, int port)
 
     if (connect(sockfd, res->ai_addr, res->ai_addrlen) < 0) {
         printf("connect() failed\n");
+        close(sockfd);
+        freeaddrinfo(res);
+        return -1;
+    }
+
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        printf("setsockopt() failed\n");
         close(sockfd);
         freeaddrinfo(res);
         return -1;

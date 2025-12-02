@@ -1,0 +1,190 @@
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:03Z",
+"temperature": 23.18
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:03Z",
+"temperature": 23.18
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:13Z",
+"temperature": 23.05
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:23Z",
+"temperature": 22.95
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:33Z",
+"temperature": 23.19
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:33Z",
+"temperature": 23.19
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:43Z",
+"temperature": 23.28
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:19:53Z",
+"temperature": 22.76
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:03Z",
+"temperature": 23.01
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:03Z",
+"temperature": 23.01
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:13Z",
+"temperature": 22.89
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:23Z",
+"temperature": 23.27
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:33Z",
+"temperature": 22.67
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:33Z",
+"temperature": 22.67
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:43Z",
+"temperature": 23.04
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:20:53Z",
+"temperature": 23.32
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:03Z",
+"temperature": 22.47
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:03Z",
+"temperature": 22.47
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:13Z",
+"temperature": 22.55
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:23Z",
+"temperature": 23.24
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:33Z",
+"temperature": 22.64
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:33Z",
+"temperature": 22.64
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:43Z",
+"temperature": 23.10
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:21:53Z",
+"temperature": 23.36
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:03Z",
+"temperature": 23.32
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:03Z",
+"temperature": 23.32
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:13Z",
+"temperature": 23.21
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:23Z",
+"temperature": 23.17
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:33Z",
+"temperature": 23.04
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:33Z",
+"temperature": 23.04
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:43Z",
+"temperature": 23.21
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:22:53Z",
+"temperature": 23.21
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:23:03Z",
+"temperature": 22.59
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:23:03Z",
+"temperature": 22.59
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:23:13Z",
+"temperature": 23.17
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:23:23Z",
+"temperature": 22.75
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:23:33Z",
+"temperature": 23.36
+}
+{
+"sensor_id": "sensornode_001",
+"timestamp": "2025-12-02T00:23:33Z",
+"temperature": 23.36
+}
